@@ -11,6 +11,7 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -23,8 +24,8 @@ import android.widget.TextView;
 
 /** Native view styling shared by every screen. */
 final class TvUi {
-    static final int WHITE = 0xFFF5F7F3;
-    static final int MUTED = 0xFFC3CCCB;
+    static final int WHITE = 0xFFF4F6F8;
+    static final int MUTED = 0xFFC2C9D2;
     enum ActionIcon { GRID, DISPLAY, SLIDERS }
 
     private TvUi() { }
@@ -65,6 +66,7 @@ final class TvUi {
 
     static void focusSurface(View view, Palette palette, int normalFill, float radius) {
         view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
         view.setClickable(true);
         view.setBackground(focusStates(view.getContext(), normalFill,
                 palette.focusedTile(), radius));
@@ -77,6 +79,56 @@ final class TvUi {
         });
     }
 
+    static void favoriteCard(View tile, View underline) {
+        Context context = tile.getContext();
+        GradientDrawable normal = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { 0xB1293743, 0xB1192433 });
+        normal.setCornerRadius(dp(context, 16));
+        normal.setStroke(dp(context, 1), 0x48B6C6DA);
+
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[] { android.R.attr.state_focused }, focusedCard(context));
+        states.addState(new int[0], normal);
+        tile.setBackground(states);
+        tile.setFocusable(true);
+        tile.setFocusableInTouchMode(true);
+        tile.setClickable(true);
+        tile.setOnFocusChangeListener((view, hasFocus) -> {
+            view.animate().cancel();
+            view.animate().scaleX(hasFocus ? 1.16f : 1f)
+                    .scaleY(hasFocus ? 1.16f : 1f)
+                    .translationY(hasFocus ? -dp(context, 2) : 0f)
+                    .setDuration(150).start();
+            view.setElevation(hasFocus ? dp(context, 7) : 0f);
+            underline.setAlpha(hasFocus ? 1f : 0f);
+        });
+    }
+
+    static void appGridCard(View tile) {
+        Context context = tile.getContext();
+        GradientDrawable normal = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { 0xBC1C2C3D, 0xC0132334 });
+        normal.setCornerRadius(dp(context, 16));
+        normal.setStroke(dp(context, 1), 0x55B6C6DA);
+
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[] { android.R.attr.state_focused }, focusedCard(context));
+        states.addState(new int[0], normal);
+        tile.setBackground(states);
+        tile.setFocusable(true);
+        tile.setFocusableInTouchMode(true);
+        tile.setClickable(true);
+        tile.setOnFocusChangeListener((view, hasFocus) -> {
+            view.animate().cancel();
+            view.animate().scaleX(hasFocus ? 1.045f : 1f)
+                    .scaleY(hasFocus ? 1.045f : 1f)
+                    .setDuration(130).start();
+            view.setElevation(hasFocus ? dp(context, 5) : 0f);
+        });
+    }
+
     private static StateListDrawable focusStates(Context context, int normalFill,
                                                  int focusedFill, float radius) {
         StateListDrawable states = new StateListDrawable();
@@ -86,32 +138,72 @@ final class TvUi {
         return states;
     }
 
+    private static Drawable focusedCard(Context context) {
+        int radius = dp(context, 16);
+        GradientDrawable fill = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { 0xD04B698E, 0xD038547A });
+        fill.setCornerRadius(radius);
+
+        GradientDrawable edgeLight = new GradientDrawable();
+        edgeLight.setCornerRadius(radius);
+        edgeLight.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        edgeLight.setGradientCenter(0f, 0f);
+        edgeLight.setGradientRadius(dp(context, 38));
+        edgeLight.setColors(new int[] { 0x50B1C5E3, Color.TRANSPARENT });
+
+        GradientDrawable outline = new GradientDrawable();
+        outline.setColor(Color.TRANSPARENT);
+        outline.setCornerRadius(radius);
+        outline.setStroke(dp(context, 1.5f), 0xFF9CB5E6);
+        return new LayerDrawable(new Drawable[] { fill, edgeLight, outline });
+    }
+
     static TextView action(Context context, Palette palette, String label) {
         TextView view = text(context, label, 16, WHITE, true);
         view.setGravity(Gravity.CENTER);
         view.setPadding(dp(context, 18), dp(context, 10),
                 dp(context, 18), dp(context, 10));
         view.setMinHeight(dp(context, 44));
-        focusSurface(view, palette, 0x2CFFFFFF, 14);
+        glassButton(view, palette);
         return view;
     }
 
     static TextView iconAction(Context context, Palette palette, String label,
                                ActionIcon icon) {
-        TextView view = text(context, label, 16, WHITE, true);
+        TextView view = text(context, label, 13, WHITE, true);
         view.setGravity(Gravity.CENTER);
         view.setSingleLine(true);
-        view.setPadding(dp(context, 14), dp(context, 9),
-                dp(context, 14), dp(context, 9));
-        view.setMinHeight(dp(context, 44));
-        view.setCompoundDrawablePadding(dp(context, 8));
+        view.setPadding(dp(context, 9), dp(context, 8),
+                dp(context, 9), dp(context, 8));
+        view.setMinHeight(dp(context, 36));
+        view.setCompoundDrawablePadding(dp(context, 7));
         ToolbarIconDrawable drawable = new ToolbarIconDrawable(icon);
-        int iconSize = dp(context, 19);
+        int iconSize = dp(context, 17);
         drawable.setBounds(0, 0, iconSize, iconSize);
         view.setCompoundDrawablesRelative(drawable, null, null, null);
         view.setContentDescription(label);
-        focusSurface(view, palette, 0x2CFFFFFF, 14);
+        glassButton(view, palette);
         return view;
+    }
+
+    private static void glassButton(View view, Palette palette) {
+        Context context = view.getContext();
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+        view.setClickable(true);
+        view.setBackground(new GlassSurfaceDrawable(context, view, palette, true));
+        StateListDrawable focusRing = new StateListDrawable();
+        focusRing.addState(new int[] { android.R.attr.state_focused },
+                rounded(context, Color.TRANSPARENT, 0xFFD7E8FF, 18));
+        focusRing.addState(new int[0],
+                rounded(context, Color.TRANSPARENT, Color.TRANSPARENT, 18));
+        view.setForeground(focusRing);
+        view.setOnFocusChangeListener((focusedView, focused) -> {
+            focusedView.animate().cancel();
+            focusedView.animate().scaleX(focused ? 1.035f : 1f)
+                    .scaleY(focused ? 1.035f : 1f).setDuration(130).start();
+        });
     }
 
     private static final class ToolbarIconDrawable extends Drawable {

@@ -10,7 +10,7 @@ Five original 1920 × 1080 PNGs explore a calm, remote-first launcher. The app n
 | `04_stillwater_screensaver.png` | Dimmed wallpaper, clock, date and return hint | Any remote button returns to Home |
 | `05_wallpaper_picker.png` | Large preview, three built-in choices and photo import | Up/down through choices; OK applies a wallpaper |
 
-The recommended starting point is **Horizon shelf**. A single focus row is fast to scan from a sofa, shows the user's wallpaper, and requires little work per D-pad press. The apps can overflow into All apps instead of shrinking the visible tiles.
+**Horizon shelf** was the initial starting point. The finished home screen follows the owner's later visual reference and uses their dusk lake image. A single focus row is fast to scan from a sofa, shows the wallpaper, and requires little work per D-pad press. Extra favorites can scroll horizontally, and All apps shows the complete set.
 
 ## Visual system
 

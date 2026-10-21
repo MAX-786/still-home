@@ -6,7 +6,7 @@ import android.graphics.Color;
 enum Palette {
     HORIZON("Horizon", 0xFF071A27, 0xFF101C26, 0xFF466774, 0xFFC5AD91),
     STONE("Stone", 0xFF1D1B29, 0xFF171C28, 0xFF66515C, 0xFFD7C1BF),
-    NIGHT("Night sea", 0xFF081A29, 0xFF06121E, 0xFF3D596B, 0xFFE5DDD0);
+    NIGHT("Dusk lake", 0xFF081A29, 0xFF06121E, 0xFF3D596B, 0xFFA8B0FB);
 
     final String title;
     final int top;

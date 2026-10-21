@@ -4,14 +4,14 @@ A small, MIT-licensed Android TV launcher built for a Redmi `MiTV-AXFR0`. It has
 
 ![Still Home running on the Redmi TV](design/screenshots/home-on-redmi.png)
 
-The chosen layout follows [Horizon shelf](design/mockups/01_horizon_shelf.png). The [contact sheet](design/mockups/00_contact_sheet.png) also contains [Stone grid](design/mockups/02_stone_grid.png), [Night strip](design/mockups/03_night_strip.png), and [screensaver](design/mockups/04_stillwater_screensaver.png) studies.
+The current home screen follows the owner's updated visual reference: a thin clock, three distinct glass controls, and a six-card favorites shelf with a raised focus state. Its default [dusk lake wallpaper](design/assets/reference_landscape.jpg) comes directly from the supplied image. The earlier [contact sheet](design/mockups/00_contact_sheet.png) remains as a record of the layout studies.
 
 ## What works
 
 - Launch TV apps discovered through Android's Leanback launcher category, with ordinary launchable apps as fallback. Netflix, YouTube, and Xiaomi TV+ are explicitly visible to package queries on Android 11+.
 - Open **TV settings** for the device's Network, Wi-Fi, Ethernet, and other Android settings; the separate **Launcher settings** action controls Still Home. The top actions have distinct grid, display, and sliders icons with short labels.
 - Pin or unpin favorites by holding OK on a tile. The shelf scrolls horizontally with the remote.
-- Choose one of three bundled backgrounds or send a personal photo from the Mac over ADB. Images decode off the UI thread at a bounded size.
+- Choose one of three bundled backgrounds or send a personal photo from the Mac over ADB. Images decode off the UI thread at a bounded size. The glass uses a small cached blurred crop rather than live blur during remote navigation.
 - Preview the clock screensaver and select it through Android's secure screensaver setting.
 - See storage and memory information, open system storage settings, and open each app's Android App info screen. “Clear launcher cache” only clears Still Home's own cache.
 
@@ -19,7 +19,7 @@ The chosen layout follows [Horizon shelf](design/mockups/01_horizon_shelf.png). 
 
 The debug APK was built and installed over the local network. ADB remote key events opened and scrolled the app grid, pinned and unpinned a favorite, opened Netflix, YouTube, and Xiaomi TV+, and returned to Still Home with the Home key. The new TV settings action opened Android TV Settings, whose Network & Internet screen exposed Wi-Fi choices and whose home screen showed Ethernet status. The separate Launcher settings action opened Still Home's own preferences, and Back returned to Home with toolbar focus preserved. Built-in wallpaper changes, transfer and removal of a Mac photo, screensaver preview and selection, maintenance links, and the original-Home rollback were also exercised. The screensaver's natural idle trigger remains controlled by the TV firmware and has not been timed.
 
-The installed version 0.1.1 debug APK is 213,153 bytes. Two earlier `dumpsys meminfo` readings with Home open showed 52,950–66,537 kB total PSS. In one 12-key ADB navigation run after app loading, `gfxinfo` reported a 14 ms median frame time and one missed frame deadline across 30 frames. These small samples are not a comparison with the stock launcher or a real-world FPS guarantee; ADB input injection itself was reported as high latency.
+The installed version 0.2.0 debug APK is 418,984 bytes. A `dumpsys meminfo` reading with Home open showed 64,434 kB total PSS. In a 10-key ADB navigation run after app loading, `gfxinfo` reported a 10 ms median frame time and three missed frame deadlines across 100 rendered frames. This is a small diagnostic sample, not a stock-launcher comparison or an FPS guarantee; ADB injection itself registered high input latency.
 
 ## Build
 
@@ -62,7 +62,7 @@ The package-level change is reversible and was required only because of this fir
 
 ## Send your own wallpaper
 
-On the TV, open **Launcher settings → Built-in wallpapers** to choose Horizon, Stone, or Night. This Redmi firmware only exposes a stub for Android's document picker. Send a JPEG, PNG, or WebP image (up to 15 MiB) from the Mac:
+On the TV, open **Launcher settings → Built-in wallpapers** to choose Horizon, Stone, or Dusk lake. Dusk lake is the default. This Redmi firmware only exposes a stub for Android's document picker. Send a JPEG, PNG, or WebP image (up to 15 MiB) from the Mac:
 
 ```sh
 python3 scripts/send_wallpaper.py ~/Pictures/my-wallpaper.jpg
@@ -93,6 +93,7 @@ Rollback checks that the TV still has Still Home selected. If you changed the sc
 - `HomeActivity`: HOME screen, app grid, remote focus, favorites.
 - `AppCatalog`: package visibility, Leanback discovery and app launching.
 - `WallpaperStore` / `BackdropLayout`: built-in and personal wallpaper loading.
+- `GlassSurfaceDrawable` / `AppBadgeDrawable`: low-cost frosted surfaces and three TV-friendly app badges.
 - `StillDreamService`: Android-managed screensaver.
 - `MaintenanceActivity`: device stats and system App info links.
 - `LauncherPrefs`: local favorites, palette and image URI.

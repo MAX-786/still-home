@@ -23,7 +23,6 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Comparator;
 
 /** Appearance, wallpaper and Android-managed Home/screensaver selection. */
 public final class SettingsActivity extends Activity {
@@ -190,7 +189,8 @@ public final class SettingsActivity extends Activity {
                     14, TvUi.MUTED, false));
             return;
         }
-        Arrays.sort(images, Comparator.comparingLong(File::lastModified).reversed());
+        Arrays.sort(images, (left, right) ->
+                Long.compare(right.lastModified(), left.lastModified()));
         importedPhotos.addView(TvUi.text(this, "Photos from Mac", 16, TvUi.WHITE, true));
         TvUi.addVerticalSpace(importedPhotos, this, 8);
         importedPhotos.addView(TvUi.text(this, "Hold OK on a photo to remove it.",
@@ -258,9 +258,11 @@ public final class SettingsActivity extends Activity {
     }
 
     private void refreshHomeStatus() {
-        RoleManager roles = Build.VERSION.SDK_INT >= 29
-                ? getSystemService(RoleManager.class) : null;
-        boolean chosen = roles != null && roles.isRoleHeld(RoleManager.ROLE_HOME);
+        boolean chosen = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            RoleManager roles = getSystemService(RoleManager.class);
+            chosen = roles != null && roles.isRoleHeld(RoleManager.ROLE_HOME);
+        }
         if (chosen && !stockHomeEnabled()) {
             homeStatus.setText("Still Home is set for the TV’s Home button.");
         } else if (chosen) {

@@ -45,6 +45,7 @@ public final class HomeActivity extends Activity {
     private boolean hasLoadedApps;
     private boolean allAppsDirty = true;
     private boolean hasRenderedFavorites;
+    private boolean pendingHomeFocus;
     private int loadGeneration;
 
     @Override
@@ -71,8 +72,25 @@ public final class HomeActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        pendingHomeFocus = true;
         showHome();
         applyImportedWallpaper(intent);
+        homePage.post(this::restorePendingHomeFocus);
+        // Android may restore the prior toolbar focus after HOME has resumed.
+        homePage.postDelayed(() -> {
+            if (!showingAllApps && hasWindowFocus()) {
+                focusHomeStart();
+                pendingHomeFocus = false;
+            }
+        }, 150);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && pendingHomeFocus) {
+            homePage.post(this::restorePendingHomeFocus);
+        }
     }
 
     @Override
@@ -96,37 +114,41 @@ public final class HomeActivity extends Activity {
 
         homePage = TvUi.column(this);
         FrameLayout.LayoutParams pageParams = fullPage();
+        pageParams.topMargin = TvUi.dp(this, 26);
+        pageParams.rightMargin = TvUi.dp(this, 26);
+        pageParams.bottomMargin = TvUi.dp(this, 47);
         backdrop.addView(homePage, pageParams);
 
         LinearLayout top = TvUi.row(this);
         homePage.addView(top, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, TvUi.dp(this, 48)));
+                LinearLayout.LayoutParams.MATCH_PARENT, TvUi.dp(this, 40)));
         TextView brand = TvUi.text(this, "Still Home", 18, TvUi.WHITE, true);
         top.addView(brand);
         top.addView(TvUi.space(this), new LinearLayout.LayoutParams(0, 1, 1));
 
         allAppsButton = TvUi.iconAction(this, palette, "Apps", TvUi.ActionIcon.GRID);
         allAppsButton.setOnClickListener(view -> showAllApps());
-        top.addView(allAppsButton);
+        top.addView(allAppsButton, new LinearLayout.LayoutParams(
+                TvUi.dp(this, 83), LinearLayout.LayoutParams.WRAP_CONTENT));
 
         TextView tvSettings = TvUi.iconAction(this, palette,
                 "TV settings", TvUi.ActionIcon.DISPLAY);
         LinearLayout.LayoutParams tvSettingsParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        tvSettingsParams.leftMargin = TvUi.dp(this, 10);
+                TvUi.dp(this, 113), LinearLayout.LayoutParams.WRAP_CONTENT);
+        tvSettingsParams.leftMargin = TvUi.dp(this, 13);
         top.addView(tvSettings, tvSettingsParams);
         tvSettings.setOnClickListener(view -> openTvSettings());
 
         TextView launcherSettings = TvUi.iconAction(this, palette,
                 "Launcher settings", TvUi.ActionIcon.SLIDERS);
         LinearLayout.LayoutParams launcherSettingsParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        launcherSettingsParams.leftMargin = TvUi.dp(this, 10);
+                TvUi.dp(this, 145), LinearLayout.LayoutParams.WRAP_CONTENT);
+        launcherSettingsParams.leftMargin = TvUi.dp(this, 13);
         top.addView(launcherSettings, launcherSettingsParams);
         launcherSettings.setOnClickListener(
                 view -> startActivity(new Intent(this, SettingsActivity.class)));
 
-        TvUi.addVerticalSpace(homePage, this, 56);
+        TvUi.addVerticalSpace(homePage, this, 40);
         TextClock time = new TextClock(this);
         time.setFormat12Hour("h:mm a");
         time.setFormat24Hour("HH:mm");
@@ -134,15 +156,21 @@ public final class HomeActivity extends Activity {
         time.setTextColor(TvUi.WHITE);
         time.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
         time.setIncludeFontPadding(false);
-        homePage.addView(time);
+        LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        clockParams.leftMargin = TvUi.dp(this, 2);
+        homePage.addView(time, clockParams);
 
         TextClock date = new TextClock(this);
         date.setFormat12Hour("EEEE, d MMMM");
         date.setFormat24Hour("EEEE, d MMMM");
         date.setTextSize(18);
-        date.setTextColor(TvUi.WHITE);
+        date.setTextColor(0xFFC6CBD3);
         date.setIncludeFontPadding(false);
-        homePage.addView(date);
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateParams.leftMargin = TvUi.dp(this, 2);
+        homePage.addView(date, dateParams);
 
         homePage.addView(TvUi.space(this), new LinearLayout.LayoutParams(1, 0, 1));
         buildShelf();
@@ -150,27 +178,48 @@ public final class HomeActivity extends Activity {
 
     private void buildShelf() {
         LinearLayout shelf = TvUi.column(this);
-        shelf.setPadding(TvUi.dp(this, 18), TvUi.dp(this, 16),
-                TvUi.dp(this, 18), TvUi.dp(this, 14));
-        shelf.setBackground(TvUi.rounded(this, palette.panel(), 0x60FFFFFF, 20));
-        homePage.addView(shelf, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        shelf.setPadding(TvUi.dp(this, 24), TvUi.dp(this, 13),
+                TvUi.dp(this, 24), TvUi.dp(this, 15));
+        shelf.setBackground(new GlassSurfaceDrawable(this, shelf, palette, false));
+        LinearLayout.LayoutParams shelfParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        shelfParams.leftMargin = TvUi.dp(this, 3);
+        shelfParams.rightMargin = TvUi.dp(this, 11);
+        homePage.addView(shelf, shelfParams);
 
         LinearLayout heading = TvUi.row(this);
+        heading.setGravity(Gravity.TOP);
         shelf.addView(heading);
-        heading.addView(TvUi.text(this, "Favorites", 18, TvUi.WHITE, true));
+        LinearLayout headingLabel = TvUi.column(this);
+        headingLabel.addView(TvUi.text(this, "Favorites", 18, TvUi.WHITE, true),
+                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+        View headingRule = new View(this);
+        headingRule.setBackgroundColor(0xFFA8B0FB);
+        LinearLayout.LayoutParams ruleParams = new LinearLayout.LayoutParams(
+                TvUi.dp(this, 26), TvUi.dp(this, 2));
+        ruleParams.topMargin = TvUi.dp(this, 7);
+        headingLabel.addView(headingRule, ruleParams);
+        heading.addView(headingLabel, new LinearLayout.LayoutParams(
+                TvUi.dp(this, 112), LinearLayout.LayoutParams.WRAP_CONTENT));
         heading.addView(TvUi.space(this), new LinearLayout.LayoutParams(0, 1, 1));
-        heading.addView(TvUi.text(this, "Hold OK to unpin", 13, TvUi.MUTED, false));
-        TvUi.addVerticalSpace(shelf, this, 12);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hintParams.topMargin = TvUi.dp(this, 3);
+        heading.addView(TvUi.text(this, "Hold OK to unpin", 11, 0xFFB7BDC7, false),
+                hintParams);
+        TvUi.addVerticalSpace(shelf, this, 10);
 
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setFillViewport(true);
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
+        scroll.setPadding(TvUi.dp(this, 4), 0, TvUi.dp(this, 4), 0);
         shelf.addView(scroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, TvUi.dp(this, 124)));
+                LinearLayout.LayoutParams.MATCH_PARENT, TvUi.dp(this, 112)));
         favoriteRow = TvUi.row(this);
+        favoriteRow.setMinimumHeight(TvUi.dp(this, 112));
         scroll.addView(favoriteRow);
         renderFavorites();
     }
@@ -234,8 +283,8 @@ public final class HomeActivity extends Activity {
             }
             View tile = appTile(app, true);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    TvUi.dp(this, 112), TvUi.dp(this, 116));
-            params.rightMargin = TvUi.dp(this, 9);
+                    TvUi.dp(this, 122), TvUi.dp(this, 96));
+            params.rightMargin = TvUi.dp(this, 18);
             favoriteRow.addView(tile, params);
             if (firstTile == null) {
                 firstTile = tile;
@@ -253,24 +302,43 @@ public final class HomeActivity extends Activity {
     }
 
     private View appTile(AppEntry app, boolean favoriteShelf) {
-        LinearLayout tile = TvUi.column(this);
-        tile.setGravity(Gravity.CENTER);
-        tile.setPadding(TvUi.dp(this, 7), TvUi.dp(this, 8),
+        FrameLayout tile = new FrameLayout(this);
+        tile.setClipChildren(false);
+        LinearLayout content = TvUi.column(this);
+        content.setGravity(Gravity.CENTER);
+        content.setPadding(TvUi.dp(this, 7), TvUi.dp(this, 8),
                 TvUi.dp(this, 7), TvUi.dp(this, 8));
-        TvUi.focusSurface(tile, palette, 0x25FFFFFF, 15);
+        tile.addView(content, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        if (favoriteShelf) {
+            View focusRule = new View(this);
+            focusRule.setBackgroundColor(0xFFA8B0FB);
+            focusRule.setAlpha(0f);
+            FrameLayout.LayoutParams ruleParams = new FrameLayout.LayoutParams(
+                    TvUi.dp(this, 20), TvUi.dp(this, 2),
+                    Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            ruleParams.bottomMargin = TvUi.dp(this, 8);
+            tile.addView(focusRule, ruleParams);
+            TvUi.favoriteCard(tile, focusRule);
+        } else {
+            TvUi.appGridCard(tile);
+        }
 
         ImageView icon = new ImageView(this);
-        icon.setImageDrawable(app.iconFor(getResources()));
+        icon.setImageDrawable(AppBadgeDrawable.forApp(app.packageName,
+                app.iconFor(getResources())));
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        tile.addView(icon, new LinearLayout.LayoutParams(TvUi.dp(this, 50), TvUi.dp(this, 50)));
-        TvUi.addVerticalSpace(tile, this, 10);
+        content.addView(icon, new LinearLayout.LayoutParams(
+                TvUi.dp(this, 45), TvUi.dp(this, 45)));
+        TvUi.addVerticalSpace(content, this, 12);
         boolean pinned = LauncherPrefs.isFavorite(this, apps, app.packageName);
-        TextView label = TvUi.text(this, app.label, 14,
+        TextView label = TvUi.text(this, app.label, favoriteShelf ? 13 : 14,
                 !favoriteShelf && pinned ? palette.accent : TvUi.WHITE, true);
         label.setSingleLine(true);
         label.setEllipsize(TextUtils.TruncateAt.END);
         label.setGravity(Gravity.CENTER);
-        tile.addView(label, new LinearLayout.LayoutParams(
+        content.addView(label, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, TvUi.dp(this, 22)));
 
         tile.setContentDescription(app.label + (pinned ? ", favorite" : ""));
@@ -316,10 +384,21 @@ public final class HomeActivity extends Activity {
             allAppsPage.setVisibility(View.GONE);
         }
         homePage.setVisibility(View.VISIBLE);
+        focusHomeStart();
+    }
+
+    private void focusHomeStart() {
         if (favoriteRow.getChildCount() > 0 && favoriteRow.getChildAt(0).isFocusable()) {
             favoriteRow.getChildAt(0).requestFocus();
         } else {
             allAppsButton.requestFocus();
+        }
+    }
+
+    private void restorePendingHomeFocus() {
+        if (pendingHomeFocus && hasWindowFocus() && !showingAllApps) {
+            pendingHomeFocus = false;
+            focusHomeStart();
         }
     }
 

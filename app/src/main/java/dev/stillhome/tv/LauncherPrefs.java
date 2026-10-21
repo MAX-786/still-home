@@ -22,7 +22,7 @@ final class LauncherPrefs {
     }
 
     static Palette palette(Context context) {
-        return Palette.fromName(prefs(context).getString(PALETTE, Palette.HORIZON.name()));
+        return Palette.fromName(prefs(context).getString(PALETTE, Palette.NIGHT.name()));
     }
 
     static void setPalette(Context context, Palette palette) {
