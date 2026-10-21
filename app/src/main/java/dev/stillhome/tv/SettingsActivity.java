@@ -66,7 +66,7 @@ public final class SettingsActivity extends Activity {
         TextView back = TvUi.action(this, palette, "Back");
         back.setOnClickListener(view -> finish());
         header.addView(back);
-        TextView title = TvUi.text(this, "Settings", 28, TvUi.WHITE, true);
+        TextView title = TvUi.text(this, "Launcher settings", 28, TvUi.WHITE, true);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-2, -2);
         titleParams.leftMargin = TvUi.dp(this, 18);
         header.addView(title, titleParams);

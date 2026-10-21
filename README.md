@@ -9,6 +9,7 @@ The chosen layout follows [Horizon shelf](design/mockups/01_horizon_shelf.png). 
 ## What works
 
 - Launch TV apps discovered through Android's Leanback launcher category, with ordinary launchable apps as fallback. Netflix, YouTube, and Xiaomi TV+ are explicitly visible to package queries on Android 11+.
+- Open **TV settings** for the device's Network, Wi-Fi, Ethernet, and other Android settings; the separate **Launcher settings** action controls Still Home. The top actions have distinct grid, display, and sliders icons with short labels.
 - Pin or unpin favorites by holding OK on a tile. The shelf scrolls horizontally with the remote.
 - Choose one of three bundled backgrounds or send a personal photo from the Mac over ADB. Images decode off the UI thread at a bounded size.
 - Preview the clock screensaver and select it through Android's secure screensaver setting.
@@ -16,9 +17,9 @@ The chosen layout follows [Horizon shelf](design/mockups/01_horizon_shelf.png). 
 
 ## Verified on this TV
 
-The debug APK was built and installed over the local network. ADB remote key events opened and scrolled the app grid, pinned and unpinned a favorite, opened Netflix, YouTube, and Xiaomi TV+, and returned to Still Home with the Home key. Built-in wallpaper changes, transfer and removal of a Mac photo, screensaver preview and selection, maintenance links, and the original-Home rollback were also exercised. The screensaver's natural idle trigger remains controlled by the TV firmware and has not been timed.
+The debug APK was built and installed over the local network. ADB remote key events opened and scrolled the app grid, pinned and unpinned a favorite, opened Netflix, YouTube, and Xiaomi TV+, and returned to Still Home with the Home key. The new TV settings action opened Android TV Settings, whose Network & Internet screen exposed Wi-Fi choices and whose home screen showed Ethernet status. The separate Launcher settings action opened Still Home's own preferences, and Back returned to Home with toolbar focus preserved. Built-in wallpaper changes, transfer and removal of a Mac photo, screensaver preview and selection, maintenance links, and the original-Home rollback were also exercised. The screensaver's natural idle trigger remains controlled by the TV firmware and has not been timed.
 
-The final APK is 236,549 bytes. Two `dumpsys meminfo` readings with Home open showed 52,950–66,537 kB total PSS. In one 12-key ADB navigation run after app loading, `gfxinfo` reported a 14 ms median frame time and one missed frame deadline across 30 frames. These small samples are not a comparison with the stock launcher or a real-world FPS guarantee; ADB input injection itself was reported as high latency.
+The installed version 0.1.1 debug APK is 213,153 bytes. Two earlier `dumpsys meminfo` readings with Home open showed 52,950–66,537 kB total PSS. In one 12-key ADB navigation run after app loading, `gfxinfo` reported a 14 ms median frame time and one missed frame deadline across 30 frames. These small samples are not a comparison with the stock launcher or a real-world FPS guarantee; ADB input injection itself was reported as high latency.
 
 ## Build
 
@@ -61,17 +62,17 @@ The package-level change is reversible and was required only because of this fir
 
 ## Send your own wallpaper
 
-On the TV, open Still Home **Settings → Built-in wallpapers** to choose Horizon, Stone, or Night. This Redmi firmware only exposes a stub for Android's document picker. Send a JPEG, PNG, or WebP image (up to 15 MiB) from the Mac:
+On the TV, open **Launcher settings → Built-in wallpapers** to choose Horizon, Stone, or Night. This Redmi firmware only exposes a stub for Android's document picker. Send a JPEG, PNG, or WebP image (up to 15 MiB) from the Mac:
 
 ```sh
 python3 scripts/send_wallpaper.py ~/Pictures/my-wallpaper.jpg
 ```
 
-The script validates the complete image with macOS `sips`, copies it into Still Home's private storage through authenticated ADB, and confirms that the TV selected it. Its filename remains recognizable in **Settings → Photos from Mac**. Up to 12 photos can be kept; hold OK on one in Settings to remove it. The transfer uses Android's `run-as`, which works with the **debug APK built by this project**. If the TV's IP changes, reconnect ADB and pass `--serial NEW_IP:5555`. The image stays local to the TV; Still Home has no network permission.
+The script validates the complete image with macOS `sips`, copies it into Still Home's private storage through authenticated ADB, and confirms that the TV selected it. Its filename remains recognizable in **Launcher settings → Photos from Mac**. Up to 12 photos can be kept; hold OK on one there to remove it. The transfer uses Android's `run-as`, which works with the **debug APK built by this project**. If the TV's IP changes, reconnect ADB and pass `--serial NEW_IP:5555`. The image stays local to the TV; Still Home has no network permission.
 
 ## Select the screensaver
 
-The TV has no working Android screensaver selection page. First use **Settings → Preview** in Still Home to inspect it. Then select the registered service with the helper:
+The TV has no working Android screensaver selection page. First use **Launcher settings → Preview** in Still Home to inspect it. Then select the registered service with the helper:
 
 ```sh
 python3 scripts/configure_screensaver.py status

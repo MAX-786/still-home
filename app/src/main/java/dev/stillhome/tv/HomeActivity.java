@@ -1,10 +1,12 @@
 package dev.stillhome.tv;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -42,6 +44,7 @@ public final class HomeActivity extends Activity {
     private boolean showingAllApps;
     private boolean hasLoadedApps;
     private boolean allAppsDirty = true;
+    private boolean hasRenderedFavorites;
     private int loadGeneration;
 
     @Override
@@ -102,15 +105,26 @@ public final class HomeActivity extends Activity {
         top.addView(brand);
         top.addView(TvUi.space(this), new LinearLayout.LayoutParams(0, 1, 1));
 
-        allAppsButton = TvUi.action(this, palette, "All apps");
+        allAppsButton = TvUi.iconAction(this, palette, "Apps", TvUi.ActionIcon.GRID);
         allAppsButton.setOnClickListener(view -> showAllApps());
         top.addView(allAppsButton);
-        TextView settings = TvUi.action(this, palette, "Settings");
-        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(
+
+        TextView tvSettings = TvUi.iconAction(this, palette,
+                "TV settings", TvUi.ActionIcon.DISPLAY);
+        LinearLayout.LayoutParams tvSettingsParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        settingsParams.leftMargin = TvUi.dp(this, 10);
-        top.addView(settings, settingsParams);
-        settings.setOnClickListener(view -> startActivity(new Intent(this, SettingsActivity.class)));
+        tvSettingsParams.leftMargin = TvUi.dp(this, 10);
+        top.addView(tvSettings, tvSettingsParams);
+        tvSettings.setOnClickListener(view -> openTvSettings());
+
+        TextView launcherSettings = TvUi.iconAction(this, palette,
+                "Launcher settings", TvUi.ActionIcon.SLIDERS);
+        LinearLayout.LayoutParams launcherSettingsParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        launcherSettingsParams.leftMargin = TvUi.dp(this, 10);
+        top.addView(launcherSettings, launcherSettingsParams);
+        launcherSettings.setOnClickListener(
+                view -> startActivity(new Intent(this, SettingsActivity.class)));
 
         TvUi.addVerticalSpace(homePage, this, 56);
         TextClock time = new TextClock(this);
@@ -186,6 +200,10 @@ public final class HomeActivity extends Activity {
         if (favoriteRow == null) {
             return;
         }
+        View oldFocused = favoriteRow.findFocus();
+        String focusedId = oldFocused != null && oldFocused.getTag() instanceof String
+                ? (String) oldFocused.getTag() : null;
+        boolean focusShelf = !showingAllApps && (oldFocused != null || !hasRenderedFavorites);
         favoriteRow.removeAllViews();
         if (apps.isEmpty()) {
             favoriteRow.addView(TvUi.text(this,
@@ -201,13 +219,14 @@ public final class HomeActivity extends Activity {
         if (favorites.isEmpty()) {
             favoriteRow.addView(TvUi.text(this,
                     "Open All apps and hold OK to pin favorites.", 16, TvUi.MUTED, false));
-            if (!showingAllApps) {
+            if (!showingAllApps && (oldFocused != null || getCurrentFocus() == null)) {
                 allAppsButton.requestFocus();
             }
             return;
         }
 
-        boolean first = true;
+        View firstTile = null;
+        View restoredTile = null;
         for (String packageName : favorites) {
             AppEntry app = byPackage.get(packageName);
             if (app == null) {
@@ -218,10 +237,18 @@ public final class HomeActivity extends Activity {
                     TvUi.dp(this, 112), TvUi.dp(this, 116));
             params.rightMargin = TvUi.dp(this, 9);
             favoriteRow.addView(tile, params);
-            if (first && !showingAllApps) {
-                first = false;
-                tile.requestFocus();
+            if (firstTile == null) {
+                firstTile = tile;
             }
+            if (focusedId != null && focusedId.equals(tile.getTag())) {
+                restoredTile = tile;
+            }
+        }
+        if (firstTile != null) {
+            hasRenderedFavorites = true;
+        }
+        if (focusShelf && firstTile != null) {
+            (restoredTile != null ? restoredTile : firstTile).requestFocus();
         }
     }
 
@@ -273,6 +300,14 @@ public final class HomeActivity extends Activity {
             renderAllApps();
         }
         focusFirstApp();
+    }
+
+    private void openTvSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Toast.makeText(this, "TV settings are unavailable", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void showHome() {

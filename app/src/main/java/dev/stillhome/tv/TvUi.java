@@ -2,8 +2,14 @@ package dev.stillhome.tv;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
@@ -19,6 +25,7 @@ import android.widget.TextView;
 final class TvUi {
     static final int WHITE = 0xFFF5F7F3;
     static final int MUTED = 0xFFC3CCCB;
+    enum ActionIcon { GRID, DISPLAY, SLIDERS }
 
     private TvUi() { }
 
@@ -87,6 +94,88 @@ final class TvUi {
         view.setMinHeight(dp(context, 44));
         focusSurface(view, palette, 0x2CFFFFFF, 14);
         return view;
+    }
+
+    static TextView iconAction(Context context, Palette palette, String label,
+                               ActionIcon icon) {
+        TextView view = text(context, label, 16, WHITE, true);
+        view.setGravity(Gravity.CENTER);
+        view.setSingleLine(true);
+        view.setPadding(dp(context, 14), dp(context, 9),
+                dp(context, 14), dp(context, 9));
+        view.setMinHeight(dp(context, 44));
+        view.setCompoundDrawablePadding(dp(context, 8));
+        ToolbarIconDrawable drawable = new ToolbarIconDrawable(icon);
+        int iconSize = dp(context, 19);
+        drawable.setBounds(0, 0, iconSize, iconSize);
+        view.setCompoundDrawablesRelative(drawable, null, null, null);
+        view.setContentDescription(label);
+        focusSurface(view, palette, 0x2CFFFFFF, 14);
+        return view;
+    }
+
+    private static final class ToolbarIconDrawable extends Drawable {
+        private final ActionIcon icon;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        ToolbarIconDrawable(ActionIcon icon) {
+            this.icon = icon;
+            paint.setColor(WHITE);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(1.8f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect bounds = getBounds();
+            canvas.save();
+            canvas.translate(bounds.left, bounds.top);
+            canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
+            switch (icon) {
+                case GRID:
+                    canvas.drawRoundRect(3, 3, 10, 10, 1.3f, 1.3f, paint);
+                    canvas.drawRoundRect(14, 3, 21, 10, 1.3f, 1.3f, paint);
+                    canvas.drawRoundRect(3, 14, 10, 21, 1.3f, 1.3f, paint);
+                    canvas.drawRoundRect(14, 14, 21, 21, 1.3f, 1.3f, paint);
+                    break;
+                case DISPLAY:
+                    canvas.drawRoundRect(2.5f, 3.5f, 21.5f, 17.5f,
+                            2.2f, 2.2f, paint);
+                    canvas.drawLine(12, 17.5f, 12, 20.5f, paint);
+                    canvas.drawLine(7.5f, 20.5f, 16.5f, 20.5f, paint);
+                    break;
+                case SLIDERS:
+                    canvas.drawLine(3, 5, 21, 5, paint);
+                    canvas.drawLine(3, 12, 21, 12, paint);
+                    canvas.drawLine(3, 19, 21, 19, paint);
+                    paint.setStyle(Paint.Style.FILL);
+                    canvas.drawCircle(8, 5, 2.6f, paint);
+                    canvas.drawCircle(16, 12, 2.6f, paint);
+                    canvas.drawCircle(10, 19, 2.6f, paint);
+                    paint.setStyle(Paint.Style.STROKE);
+                    break;
+            }
+            canvas.restore();
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+            invalidateSelf();
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter filter) {
+            paint.setColorFilter(filter);
+            invalidateSelf();
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
     }
 
     static void clipToBounds(View view) {
