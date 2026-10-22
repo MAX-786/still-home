@@ -9,6 +9,10 @@ Version 0.3 keeps the look of the original home screen (the dusk lake wallpaper,
 ## What works
 
 - **Home.** The wordmark, the clock and date, and the weather line for your city (temperature, conditions, high and low). Top right, four icon-only glass discs: the network (Wi-Fi or Ethernet, and whether the TV is online: amber without internet, a red slash when not connected; OK opens the TV's network settings), All apps, the TV's Android settings and Launcher settings. The focused disc turns white, grows a little and slides its name out beside the icon.
+- **Namaz times.** A glass card opposite the clock with the owner's emblem, the coming time (name, hour, how long until it) and the whole day in three columns: Morning (Sehri end, Sunrise), Afternoon (Zawal, Zuhr end, Asr end) and Evening (Maghrib, Nisf-ul-lail start and end). Worked out from the sun at your city, no network: Sehri end is 75 minutes before sunrise, Zawal the sun's highest point, Zuhr ends when the shadow reaches the object's length (Shafi'i) or twice it (Hanafi, the default) plus its noon shadow, Asr's preferred time ends 20 minutes before sunset, Maghrib is sunset, and Nisf-ul-lail runs from the middle of the night (halfway from sunset to the next Sehri end) to that Sehri end. The card and the Asr school are in Launcher settings.
+
+  ![The namaz card on the Redmi](design/screenshots/home-0.3-namaz-on-redmi.png)
+
 - **Favorites.** The pinned apps on a glass shelf; the focused tile rises with a spring. Hold OK on a tile to move it (← → move, OK drops, Back cancels). In **All apps**, hold OK on an app to pin or unpin it. Up to 8 favorites; the default list is the installed streaming apps.
 - **Drawer.** Press ↓ on the shelf: everything lifts and a drawer appears with the TV's inputs (when it has any), shortcuts (All apps, Launcher settings, TV settings, Screensaver, Maintenance) and the weather card: now, the next six hours, sunrise and sunset. ↑ or Back closes it.
 
@@ -131,7 +135,7 @@ Rollback checks that the TV still has Still Home selected. If you changed the sc
 - `Scene` / `Shaders` / `Frost`: the aurora and the glass (AGSL on Android 13+, CPU paths below).
 - `Backdrop` / `Wallpapers` / `WallpaperStore`: wallpapers at the UI size with their blurred copies for the glass.
 - `HomeApps`: the app catalogue, TV art, icons and launching; `Prefs`: everything set on the TV.
-- `HomeData`: Open-Meteo weather and city search; `NetworkStatus`: Wi-Fi/Ethernet and online state; `Clock`: time and date formats.
+- `HomeData`: Open-Meteo weather and city search; `Prayer`: the day's namaz times from the sun's position; `NetworkStatus`: Wi-Fi/Ethernet and online state; `Clock`: time and date formats.
 - `AmbientView` / `StillDreamService` / `AmbientPreviewActivity`: the screensaver.
 - `SettingsActivity`, `MaintenanceActivity`: the settings and maintenance pages (Android views on the same backdrop).
 - `Spring`, `Shadows`, `Recording`, `Symbols`, `Ui`, `Spoken`, `Click`: animation, shadows, icons, fonts and text, accessibility, sounds.

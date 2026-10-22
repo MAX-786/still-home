@@ -65,7 +65,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final int SMOKE = 0xFF0B1620, INK = 0xFF1C1C1E, WHITE = 0xFFF5F7FA, MUTED = 0xFFC2C9D2, ACCENT = 0xFFA8B0FB;
     private static final long TOAST_MS = 6000, FADE_MS = 800, HOLD_MS = 500, WIGGLE_MS = 300;
     private static final float SHADOW_BLUR = 26, DEEP_BLUR = 30, LIFT_GROW = 0.06f, WIGGLE_DEG = 1.5f;
-    private static final int SKY = 0, TOP = 1, STATUS = 2, PLATTER = 3, TILES = 4, DRAWER = 5, SHEET = 6, TOAST = 7;
+    private static final int SKY = 0, TOP = 1, STATUS = 2, PLATTER = 3, TILES = 4, DRAWER = 5, SHEET = 6, TOAST = 7, NAMAZ = 8;
+    // The namaz card, opposite the clock: the emblem, the next time, then the day in three columns.
+    private static final float NAMAZ_L = 1176, NAMAZ_T = 156, NAMAZ_PAD = 34, NAMAZ_RADIUS = 30, EMBLEM_H = 92;
+    private static final float NAMAZ_ROW = 52;
     private static final int Z_STATUS = 0, Z_SHELF = 2, Z_DRAWER = 3, WIDGETS = 8, GRID = 9;
     private static final ExecutorService LOADER = Ui.worker("lists");
 
@@ -86,7 +89,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         @Override public boolean clickable(int id) { return (id - 1) / 1000 != WIDGETS; }
     });
     private final RectF a11yRect = new RectF();
-    private final Layer sky, topLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer;
+    private final Layer sky, topLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer, namazLayer;
     private int zone = Z_SHELF;
 
     // Top: the three pills
@@ -151,7 +154,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private long toastAt;
 
     // Frames
-    private boolean running, tilesDirty, statusDirty, topDirty, drawerDirty, gridDirty, motionDirty = true;
+    private boolean running, tilesDirty, statusDirty, topDirty, drawerDirty, gridDirty, namazDirty, motionDirty = true;
     private boolean drawerWasMoving, idle;
     private long lastNanos, lastStep;
     private int w, h;
@@ -163,6 +166,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int prefsSeen = -1;
 
     private Paint brandPaint, clockPaint, datePaint, weatherPaint, buttonText, headPaint, hintPaint, tileLabel;
+    private Paint nLabel, nName, nTime, nUntil, nGroup, nRow, nRowTime;
+    private Bitmap emblem;
+    private long namazMinute = -1;
+    private List<Prayer.Time> namazDay;
+    private Prayer.Time namazNext;
+    private String[] namazText = new String[0];
+    private String namazNextTime = "", namazUntil = "";
     private Paint rowTitle, drawerLabel, cardTitle, cardText, cardDim, bigTemp, hourPaint, hourTemp, sheetTitle, emptyPaint;
     private TextPaint gridLabel, toastPaint;
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -216,6 +226,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case TILES: drawTiles(c); break;
                 case DRAWER: drawDrawer(c); break;
                 case SHEET: drawSheet(c); break;
+                case NAMAZ: drawNamaz(c); break;
                 default: drawToast(c); break;
             }
             scene.setOffset(0, 0);
@@ -263,10 +274,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         drawerLayer = new Layer(a, DRAWER);
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
+        namazLayer = new Layer(a, NAMAZ);
         // Hardware layers on the GPU: only the one that changed is redrawn. Not on Android 8 to 11 (this Redmi): on
         // older GPUs redrawing and compositing big layers every frame costs more than drawing straight to the screen.
-        for (View v : new View[] {topLayer, status, platter, tiles, drawerLayer, sheetLayer}) v.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
-        for (View v : new View[] {sky, topLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer}) {
+        for (View v : new View[] {topLayer, status, namazLayer, platter, tiles, drawerLayer, sheetLayer}) v.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
+        for (View v : new View[] {sky, topLayer, namazLayer, status, platter, tiles, drawerLayer, sheetLayer, toastLayer}) {
             v.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             addView(v);
         }
@@ -327,6 +339,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             data.settingsChanged();
             data.refreshIfStale();
             weatherLineAt = -1;
+            namazMinute = -1;
+            namazDirty = true;
         }
         reload();
         updatePalette();
@@ -401,7 +415,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void invalidateAll() {
-        for (View v : new View[] {sky, topLayer, status, platter, tiles, drawerLayer}) v.invalidate();
+        for (View v : new View[] {sky, topLayer, namazLayer, status, platter, tiles, drawerLayer}) v.invalidate();
     }
 
     // MARK: - Size and layers
@@ -417,6 +431,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         measure(drawerLayer, width, Math.round(600 * kk));
         measure(sheetLayer, width, height);
         measure(toastLayer, Math.round(1000 * kk), Math.round(300 * kk));
+        measure(namazLayer, Math.round((1920 - NAMAZ_L + 40) * kk), Math.round(440 * kk));
         setMeasuredDimension(width, height);
     }
 
@@ -436,7 +451,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
         sheetLayer.setPivotY(height / 2f);
-        place(toastLayer, width - toastLayer.getMeasuredWidth(), 0);
+        place(toastLayer, (width - toastLayer.getMeasuredWidth()) / 2, 0);
+        place(namazLayer, width - namazLayer.getMeasuredWidth(), Math.round((NAMAZ_T - 20) * kk));
     }
 
     private static void place(View v, int x, int y) {
@@ -492,6 +508,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         gridLabel = new TextPaint(Ui.text(Ui.medium, 24 * k, 0x99FFFFFF));
         gridLabel.setTextAlign(Paint.Align.CENTER);
         toastPaint = new TextPaint(Ui.text(Ui.medium, 26 * k, 0xF2FFFFFF));
+        nLabel = Ui.text(Ui.semibold, 17 * k, 0xA6FFFFFF);
+        nLabel.setLetterSpacing(0.12f);
+        nName = Ui.text(Ui.displaySemibold, 34 * k, WHITE);
+        nTime = Ui.numbers(Ui.displayMedium, 44 * k, WHITE);
+        nTime.setTextAlign(Paint.Align.RIGHT);
+        nUntil = Ui.text(Ui.medium, 20 * k, 0xB8FFFFFF);
+        nUntil.setTextAlign(Paint.Align.RIGHT);
+        nGroup = Ui.text(Ui.semibold, 16 * k, 0x8CFFFFFF);
+        nGroup.setLetterSpacing(0.1f);
+        nRow = Ui.text(Ui.medium, 16 * k, 0xA6FFFFFF);
+        nRowTime = Ui.numbers(Ui.medium, 23 * k, WHITE);
+        for (Paint p : new Paint[] {nName, nTime}) p.setShadowLayer(14 * k, 0, 1.5f * k, 0x4D000000);
+        emblem = null;
+        namazMinute = -1;
         shadow.setMaskFilter(new BlurMaskFilter(SHADOW_BLUR * k, BlurMaskFilter.Blur.NORMAL));
         shadowDeep.setMaskFilter(new BlurMaskFilter(DEEP_BLUR * k, BlurMaskFilter.Blur.NORMAL));
         border.setStyle(Paint.Style.STROKE);
@@ -540,6 +570,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (tilesMoving || tilesDirty) tiles.invalidate();
         if (statusMoving || statusDirty || bgFading) status.invalidate();
         if (topDirty || bgFading) topLayer.invalidate();
+        if (namazDirty || bgFading) namazLayer.invalidate();
         if (drawerItemsMoving || drawerDirty || bgFading) drawerLayer.invalidate();
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (drawerMoving || bgFading || skyMoving) sky.invalidate();
@@ -547,11 +578,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (skyMoving && !drawerMoving) {
             // The aurora moved under the glass: the pills and the drawer read it too (cheap on the CPU path).
             status.invalidate();
+            namazLayer.invalidate();
             if (drawerLayer.getVisibility() == VISIBLE) drawerLayer.invalidate();
         }
         drawerWasMoving = drawerMoving;
-        tilesDirty = statusDirty = topDirty = drawerDirty = gridDirty = motionDirty = false;
-        if (updateClock()) topLayer.invalidate();
+        tilesDirty = statusDirty = topDirty = drawerDirty = gridDirty = motionDirty = namazDirty = false;
+        if (updateClock()) {
+            topLayer.invalidate();
+            namazLayer.invalidate();
+        }
 
         boolean busy = tilesMoving || statusMoving || drawerItemsMoving || gridMoving || drawerMoving || sheetMoving
                 || toastFading || bgFading || sheetOpen || sheet.value > 0.001f || drawerOpen || drawer.value > 0.001f
@@ -583,6 +618,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float lift = -d * shift;
         show(topLayer, top, lift * 0.6f);
         show(status, top, lift * 0.6f);
+        show(namazLayer, top, lift * 0.6f);
         show(platter, home, lift);
         show(tiles, home, lift);
         float da = home * smoothstep(0.1f, 0.6f, dc);
@@ -671,7 +707,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         } else {
             scene.setGlassImages(bgFrom.glass, b.glass);
         }
-        topDirty = statusDirty = tilesDirty = drawerDirty = true;
+        topDirty = statusDirty = tilesDirty = drawerDirty = namazDirty = true;
         sky.invalidate();
         platter.invalidate();
         wake();
@@ -691,7 +727,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 scene.setFrost(bgTo.frost);
                 scene.setGlassImage(bgTo.glass);
             }
-            statusDirty = drawerDirty = true;
+            statusDirty = drawerDirty = namazDirty = true;
             platter.invalidate();
         }
         return true;
@@ -768,6 +804,126 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float sw = Symbols.width(getContext(), symbol, size);
         Symbols.draw(getContext(), c, symbol, x + sw / 2, base - Ui.halfCap(weatherPaint), size, 0xF2FFFFFF);
         c.drawText(weatherLine, x + sw + 14 * k, base, weatherPaint);
+    }
+
+    // MARK: - Namaz times (opposite the clock)
+
+    /** The day's times, the next one and their text, made again once a minute. */
+    private void refreshNamaz(long now) {
+        long minute = now / 60_000;
+        if (minute == namazMinute) return;
+        namazMinute = minute;
+        namazDay = null;
+        if (!Prefs.hasCity()) return;
+        try {
+            namazDay = Prayer.day(now, Double.parseDouble(Prefs.latitude()), Double.parseDouble(Prefs.longitude()), Prefs.asrFactor());
+        } catch (NumberFormatException e) {
+            namazDay = null;
+        }
+        if (namazDay == null) return;
+        namazNext = Prayer.next(namazDay, now);
+        namazText = new String[namazDay.size()];
+        for (int i = 0; i < namazText.length; i++) namazText[i] = Clock.time(getContext(), namazDay.get(i).at);
+        namazNextTime = Clock.time(getContext(), namazNext.at);
+        namazUntil = Prayer.until(namazNext.at, now);
+    }
+
+    private Bitmap emblem() {
+        if (emblem != null) return emblem;
+        Bitmap src = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.namaz_emblem);
+        if (src == null) return null;
+        int h = Math.max(1, Math.round(EMBLEM_H * k)), w = Math.max(1, Math.round(src.getWidth() * (float) h / src.getHeight()));
+        emblem = Bitmap.createScaledBitmap(src, w, h, true);
+        if (emblem != src) src.recycle();
+        return emblem;
+    }
+
+    /**
+     * Smoked glass card: the emblem, "UP NEXT" with the coming time's name, its hour and how long until it; under a
+     * hairline, the whole day in three columns (Morning, Afternoon, Evening). The coming row is in the accent color,
+     * the ones already past are dimmed.
+     */
+    private void drawNamaz(Canvas c) {
+        if (!Prefs.namaz()) return;
+        long now = System.currentTimeMillis();
+        refreshNamaz(now);
+        float left = NAMAZ_L * k, top = NAMAZ_T * k, right = CONTENT_R * k, pad = NAMAZ_PAD * k, radius = NAMAZ_RADIUS * k;
+        if (namazDay == null) {
+            tmp.set(left, top, right, top + 112 * k);
+            drawerGlass(c, tmp, radius, 10 * k);
+            Bitmap e = emblem();
+            float x = left + pad;
+            if (e != null) {
+                float eh = 60 * k, ew = e.getWidth() * eh / e.getHeight();
+                cell.set(x, tmp.centerY() - eh / 2, x + ew, tmp.centerY() + eh / 2);
+                c.drawBitmap(e, null, cell, bitmapPaint);
+                x += ew + 20 * k;
+            }
+            c.drawText("Namaz times", x, tmp.centerY() - 6 * k, nName);
+            c.drawText("Set your city in Launcher settings", x, tmp.centerY() + 26 * k, nUntil.getTextAlign() == Paint.Align.RIGHT ? leftAligned(nUntil) : nUntil);
+            return;
+        }
+        float colTop = top + 150 * k + 24 * k;
+        float bottom = colTop + 30 * k + 3 * NAMAZ_ROW * k + pad - 6 * k;
+        tmp.set(left, top, right, bottom);
+        drawerGlass(c, tmp, radius, 10 * k);
+
+        // Header: emblem, "UP NEXT", the name; the hour and the countdown at the right.
+        float x = left + pad, hy = top + pad;
+        Bitmap e = emblem();
+        if (e != null) {
+            cell.set(x, hy, x + e.getWidth(), hy + e.getHeight());
+            c.drawBitmap(e, null, cell, bitmapPaint);
+            x += e.getWidth() + 22 * k;
+        }
+        c.drawText("UP NEXT", x, hy + 22 * k, nLabel);
+        c.drawText(namazNext.name, x - Ui.leftBearing(nName, namazNext.name), hy + 66 * k, nName);
+        c.drawText(namazNextTime, right - pad, hy + 62 * k, nTime);
+        c.drawText(namazUntil, right - pad, hy + 92 * k, nUntil);
+        rule.setColor(0x2EFFFFFF);
+        c.drawRect(left + pad, top + 150 * k, right - pad, top + 150 * k + k, rule);
+
+        // Three equal columns; each time is its name (small) over the hour, the coming one in the accent color.
+        float cw = (right - left - 2 * pad) / 3, cx = left + pad;
+        int index = 0;
+        for (int g = 0; g < 3; g++) {
+            c.drawText(Prayer.GROUPS[g].toUpperCase(Ui.locale()), cx, colTop + 14 * k, nGroup);
+            if (g > 0) {
+                rule.setColor(0x24FFFFFF);
+                c.drawRect(cx - 14 * k, colTop, cx - 14 * k + k, colTop + 30 * k + 3 * NAMAZ_ROW * k - 14 * k, rule);
+            }
+            int row = 0;
+            while (index < namazDay.size() && namazDay.get(index).group == g) {
+                Prayer.Time t = namazDay.get(index);
+                boolean next = t.name.equals(namazNext.name), past = !next && t.at < now;
+                float rowTop = colTop + 30 * k + row * NAMAZ_ROW * k;
+                nRow.setColor(next ? ACCENT : Ui.alpha(0xA6FFFFFF, past ? 0.55f : 1));
+                nRowTime.setColor(next ? ACCENT : Ui.alpha(WHITE, past ? 0.5f : 1));
+                float lx = cx;
+                if (next) {
+                    fill.setShader(null);
+                    fill.setColor(ACCENT);
+                    c.drawCircle(cx + 3 * k, rowTop + 14 * k - Ui.halfCap(nRow), 3 * k, fill);
+                    lx += 12 * k;
+                }
+                fitPaint.set(nRow);
+                c.drawText(TextUtils.ellipsize(t.name, fitPaint, cw - 20 * k - (lx - cx), TextUtils.TruncateAt.END).toString(), lx, rowTop + 14 * k, nRow);
+                c.drawText(namazText[index], cx, rowTop + 42 * k, nRowTime);
+                index++;
+                row++;
+            }
+            cx += cw;
+        }
+        nRow.setColor(0xA6FFFFFF);
+        nRowTime.setColor(WHITE);
+    }
+
+    private final Paint leftUntil = new Paint();
+
+    private Paint leftAligned(Paint p) {
+        leftUntil.set(p);
+        leftUntil.setTextAlign(Paint.Align.LEFT);
+        return leftUntil;
     }
 
     // MARK: - Top right: the glass discs (network, All apps, TV settings, Launcher settings)
@@ -1499,9 +1655,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (a <= 0) return;
         float padX = 28 * k, padY = 18 * k, icon = 26 * k, iconW = Symbols.width(getContext(), "bell", icon);
         float tw = toast.getWidth() + iconW + 16 * k, th = toast.getHeight();
-        // Under the pills, at the right: the sky there is empty, the clock and the pills stay clear.
-        float toastTop = 150 * k - (1 - a) * 16 * k, right = CONTENT_R * k;
-        tmp.set(right - tw - 2 * padX, toastTop, right, toastTop + th + 2 * padY);
+        // Between the clock and the namaz card, under the pills.
+        float toastTop = 150 * k - (1 - a) * 16 * k, cx = 900 * k;
+        tmp.set(cx - tw / 2 - padX, toastTop, cx + tw / 2 + padX, toastTop + th + 2 * padY);
         int save = c.saveLayerAlpha(tmp.left - 4, tmp.top - 4, tmp.right + 4, tmp.bottom + 4, Math.round(255 * a));
         scene.glass(c, tmp, Math.min(tmp.height() / 2, 32 * k), SMOKE, 0.55f, 0, 0, 0.02f, 1);
         Symbols.draw(getContext(), c, "bell", tmp.left + padX + iconW / 2, tmp.centerY(), icon, 0xEBFFFFFF);
@@ -1511,7 +1667,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private StaticLayout layout(String text) {
-        int max = Math.round(720 * k);
+        int max = Math.round(440 * k);
         int width = (int) Math.min(max, Math.ceil(Layout.getDesiredWidth(text, toastPaint)));
         return StaticLayout.Builder.obtain(text, 0, text.length(), toastPaint, Math.max(1, width))
                 .setMaxLines(2)

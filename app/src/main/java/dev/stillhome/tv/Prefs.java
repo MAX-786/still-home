@@ -143,6 +143,23 @@ final class Prefs {
         version++;
     }
 
+    // MARK: - Namaz times
+
+    /** The namaz card opposite the clock (needs a city). */
+    static boolean namaz() { return sp().getBoolean("namaz", true); }
+    static void setNamaz(boolean on) { put("namaz", on); }
+
+    /** "hanafi" (Asr when the shadow is twice the object, plus its noon shadow) or "shafii" (once). */
+    static String asrSchool() {
+        return sp().getString("asr", "hanafi").equals("shafii") ? "shafii" : "hanafi";
+    }
+
+    static int asrFactor() {
+        return asrSchool().equals("shafii") ? 1 : 2;
+    }
+
+    static void setAsrSchool(String v) { put("asr", v); }
+
     // MARK: - Screensaver
 
     /** "analog" (the glass clock) or "digital". */

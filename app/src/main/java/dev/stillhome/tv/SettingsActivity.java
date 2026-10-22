@@ -39,7 +39,7 @@ public final class SettingsActivity extends Activity {
     private LinearLayout importedPhotos;
     private LinearLayout backgroundRow;
     private TextView screensaverStatus, homeStatus, cityButton, unitButton, clockButton, weatherButton;
-    private TextView liveButton, styleButton, dreamBackgroundButton, soundsButton, languageButton;
+    private TextView liveButton, styleButton, dreamBackgroundButton, soundsButton, languageButton, namazButton, asrButton;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -139,6 +139,21 @@ public final class SettingsActivity extends Activity {
             refreshLabels();
         });
 
+        // Namaz times
+        heading(sections, "Namaz times", "Worked out from the sun at your city: Sehri end is 75 minutes before sunrise, Zawal is the sun's highest point, "
+                + "Zuhr ends when the shadow reaches the object's length (Shafi'i) or twice it (Hanafi) plus its noon shadow, Asr's preferred time ends 20 minutes "
+                + "before sunset, Maghrib is sunset, and Nisf-ul-lail runs from the middle of the night (halfway from sunset to the next Sehri end) to that Sehri end.");
+        LinearLayout namazRow = TvUi.row(this);
+        sections.addView(namazRow);
+        namazButton = addAction(namazRow, "", () -> {
+            Prefs.setNamaz(!Prefs.namaz());
+            refreshLabels();
+        });
+        asrButton = addAction(namazRow, "", () -> {
+            Prefs.setAsrSchool(Prefs.asrSchool().equals("hanafi") ? "shafii" : "hanafi");
+            refreshLabels();
+        });
+
         // Favorites
         heading(sections, "Favorites", "On Home: hold OK on a favorite to move it. In Apps: hold OK on an app to pin or unpin it.");
         LinearLayout shelfRow = TvUi.row(this);
@@ -218,6 +233,8 @@ public final class SettingsActivity extends Activity {
         styleButton.setText(Prefs.dreamStyle().equals("analog") ? "Clock: analog glass" : "Clock: digital");
         dreamBackgroundButton.setText(Prefs.dreamBackground().equals("photos") ? "Behind it: your photos" : "Behind it: aurora");
         soundsButton.setText(Prefs.sounds() ? "Click sounds: on" : "Click sounds: off");
+        namazButton.setText(Prefs.namaz() ? "Namaz times: shown" : "Namaz times: hidden");
+        asrButton.setText(Prefs.asrSchool().equals("hanafi") ? "Asr: Hanafi" : "Asr: Shafi'i");
         String lang = Prefs.language();
         languageButton.setText("Language: " + (lang.equals("auto") ? "Automatic" : Ui.languageName(lang)));
     }
