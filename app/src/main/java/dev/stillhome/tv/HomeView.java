@@ -887,7 +887,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float cw = (right - left - 2 * pad) / 3, cx = left + pad;
         int index = 0;
         for (int g = 0; g < 3; g++) {
-            c.drawText(Prayer.GROUPS[g].toUpperCase(Ui.locale()), cx, colTop + 14 * k, nGroup);
+            // The part of the day as a glyph: a sunrise, the sun, the moon.
+            String glyph = g == 0 ? "sunrise" : g == 1 ? "sunny" : "clear_night";
+            float gs = 26 * k;
+            Symbols.draw(getContext(), c, glyph, cx + Symbols.width(getContext(), glyph, gs) / 2, colTop + 8 * k, gs, 0xC2FFFFFF);
             if (g > 0) {
                 rule.setColor(0x24FFFFFF);
                 c.drawRect(cx - 14 * k, colTop, cx - 14 * k + k, colTop + 30 * k + 3 * NAMAZ_ROW * k - 14 * k, rule);
