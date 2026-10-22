@@ -7,14 +7,15 @@ import java.util.TimeZone;
 
 /**
  * The day's namaz times for the city in Launcher settings, from the sun's position (the usual astronomical formulas,
- * as prayer-time calculators use them; no network). The list follows the owner's timetable:
+ * as prayer-time calculators use them; no network). The list follows the owner's timetable, checked against the app
+ * they use (Jabalpur, 23 October 2026: Zawal 11:55, Zuhr end 13:48, Asr end 15:42, Maghrib 17:38, Nisf-ul-lail
+ * 23:55 to 00:56):
  *
  *  Morning    Sehri end (75 minutes before sunrise), Sunrise
- *  Afternoon  Zawal (the sun at its highest), Zuhr end (= Asr begins: the shadow is the object's length times the
- *             school's factor plus its noon shadow; Hanafi 2, Shafi'i 1), Asr end (the preferred time, until the sun
- *             turns yellow: taken as 20 minutes before sunset)
- *  Evening    Maghrib (sunset), Nisf-ul-lail start (juristic midnight: halfway from sunset to the next Sehri end),
- *             Nisf-ul-lail end (the next Sehri end)
+ *  Afternoon  Zawal (the sun at its highest), then the time from Zawal to sunset in three equal parts: Zuhr ends at
+ *             the first third, Asr at the second
+ *  Evening    Maghrib (sunset), Nisf-ul-lail start (true midnight: halfway from sunset to the next sunrise, Zawal
+ *             plus twelve hours), Nisf-ul-lail end (one hour of the night later: a twelfth of the night)
  */
 final class Prayer {
     static final int MORNING = 0, AFTERNOON = 1, EVENING = 2;
@@ -33,8 +34,8 @@ final class Prayer {
         }
     }
 
-    /** A day's times for the city, in order, or null without a city. `asrFactor`: 2 (Hanafi) or 1 (Shafi'i). */
-    static List<Time> day(long now, double latitude, double longitude, int asrFactor) {
+    /** A day's times for the city, in order, or null without a city. */
+    static List<Time> day(long now, double latitude, double longitude) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(now);
         cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -42,22 +43,24 @@ final class Prayer {
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
         long midnight = cal.getTimeInMillis();
-        double[] today = sun(midnight, latitude, longitude, asrFactor);
+        double[] today = sun(midnight, latitude, longitude);
         cal.add(Calendar.DAY_OF_MONTH, 1);
-        double[] tomorrow = sun(cal.getTimeInMillis(), latitude, longitude, asrFactor);
+        double[] tomorrow = sun(cal.getTimeInMillis(), latitude, longitude);
         if (today == null || tomorrow == null) return null;
         long sunrise = midnight + Math.round(today[0] * MINUTE), noon = midnight + Math.round(today[1] * MINUTE);
-        long asr = midnight + Math.round(today[2] * MINUTE), sunset = midnight + Math.round(today[3] * MINUTE);
-        long nextSehri = cal.getTimeInMillis() + Math.round(tomorrow[0] * MINUTE) - 75 * MINUTE;
+        long sunset = midnight + Math.round(today[2] * MINUTE);
+        long nextSunrise = cal.getTimeInMillis() + Math.round(tomorrow[0] * MINUTE);
+        long afternoon = sunset - noon, night = nextSunrise - sunset;
+        long midnightTrue = sunset + night / 2;
         List<Time> out = new ArrayList<>();
         out.add(new Time("Sehri end", sunrise - 75 * MINUTE, MORNING));
         out.add(new Time("Sunrise", sunrise, MORNING));
         out.add(new Time("Zawal", noon, AFTERNOON));
-        out.add(new Time("Zuhr end", asr, AFTERNOON));
-        out.add(new Time("Asr end", sunset - 20 * MINUTE, AFTERNOON));
+        out.add(new Time("Zuhr end", noon + afternoon / 3, AFTERNOON));
+        out.add(new Time("Asr end", noon + 2 * afternoon / 3, AFTERNOON));
         out.add(new Time("Maghrib", sunset, EVENING));
-        out.add(new Time("Nisf-ul-lail start", sunset + (nextSehri - sunset) / 2, EVENING));
-        out.add(new Time("Nisf-ul-lail end", nextSehri, EVENING));
+        out.add(new Time("Nisf-ul-lail start", midnightTrue, EVENING));
+        out.add(new Time("Nisf-ul-lail end", midnightTrue + night / 12, EVENING));
         return out;
     }
 
@@ -69,10 +72,10 @@ final class Prayer {
     }
 
     /**
-     * Minutes after local midnight of {sunrise, solar noon, asr, sunset} for the day starting at `midnight` (epoch ms),
+     * Minutes after local midnight of {sunrise, solar noon, sunset} for the day starting at `midnight` (epoch ms),
      * or null in polar conditions. Equation of time and declination follow the NOAA solar formulas.
      */
-    private static double[] sun(long midnight, double lat, double lon, int asrFactor) {
+    private static double[] sun(long midnight, double lat, double lon) {
         TimeZone zone = TimeZone.getDefault();
         double zoneHours = zone.getOffset(midnight + 12 * 3600_000L) / 3600_000.0;
         // Julian day at local noon, then the sun's position (iterated once: the transit time shifts it a little).
@@ -84,10 +87,7 @@ final class Prayer {
         double decl = eqDecl[1];
         double rise = hourAngle(lat, decl, -0.833);
         if (Double.isNaN(rise)) return null;
-        double asrAltitude = Math.toDegrees(Math.atan(1 / (asrFactor + Math.tan(Math.toRadians(Math.abs(lat - decl))))));
-        double asr = hourAngle(lat, decl, asrAltitude);
-        if (Double.isNaN(asr)) return null;
-        return new double[] {(transit - rise) * 60, transit * 60, (transit + asr) * 60, (transit + rise) * 60};
+        return new double[] {(transit - rise) * 60, transit * 60, (transit + rise) * 60};
     }
 
     /** Hours from solar noon at which the sun's center is at `altitude` degrees, or NaN. */

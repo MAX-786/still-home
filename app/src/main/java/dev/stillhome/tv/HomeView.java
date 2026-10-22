@@ -816,7 +816,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         namazDay = null;
         if (!Prefs.hasCity()) return;
         try {
-            namazDay = Prayer.day(now, Double.parseDouble(Prefs.latitude()), Double.parseDouble(Prefs.longitude()), Prefs.asrFactor());
+            namazDay = Prayer.day(now, Double.parseDouble(Prefs.latitude()), Double.parseDouble(Prefs.longitude()));
         } catch (NumberFormatException e) {
             namazDay = null;
         }
