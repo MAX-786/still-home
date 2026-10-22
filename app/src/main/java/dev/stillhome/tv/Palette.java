@@ -34,12 +34,18 @@ enum Palette {
         return Color.argb(75, 235, 243, 242);
     }
 
+    /** The palette behind the settings pages, from the wallpaper key ("res:STONE"…; the aurora and photos use Dusk lake's). */
+    static Palette current(android.content.Context context) {
+        String key = Prefs.wallpaper();
+        return key.startsWith("res:") ? fromName(key.substring(4)) : NIGHT;
+    }
+
     static Palette fromName(String name) {
         for (Palette palette : values()) {
             if (palette.name().equals(name)) {
                 return palette;
             }
         }
-        return HORIZON;
+        return NIGHT;
     }
 }

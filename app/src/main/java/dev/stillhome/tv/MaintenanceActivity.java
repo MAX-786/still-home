@@ -35,7 +35,7 @@ public final class MaintenanceActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         TvUi.fullScreen(this);
-        palette = LauncherPrefs.palette(this);
+        palette = Palette.current(this);
         buildScreen();
     }
 

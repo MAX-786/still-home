@@ -192,7 +192,7 @@ final class TvUi {
         view.setFocusable(true);
         view.setFocusableInTouchMode(true);
         view.setClickable(true);
-        view.setBackground(new GlassSurfaceDrawable(context, view, palette, true));
+        view.setBackground(rounded(context, 0xB3182A3C, 0x4FE6F2FF, 18));
         StateListDrawable focusRing = new StateListDrawable();
         focusRing.addState(new int[] { android.R.attr.state_focused },
                 rounded(context, Color.TRANSPARENT, 0xFFD7E8FF, 18));

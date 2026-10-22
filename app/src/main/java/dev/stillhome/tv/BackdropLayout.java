@@ -30,16 +30,11 @@ final class BackdropLayout extends FrameLayout {
     }
 
     void refreshWallpaper() {
-        boolean cleanDusk = !ambient && getContext() instanceof HomeActivity
-                && palette == Palette.NIGHT
-                && LauncherPrefs.wallpaperUri(getContext()) == null;
         tint.setBackground(new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 ambient
                     ? new int[] { 0xA800090F, 0xC500090F }
-                    : cleanDusk
-                        ? new int[] { 0x0000090F, 0x0800090F }
-                        : new int[] { 0x2800090F, 0x9C00090F }));
+                    : new int[] { 0x2800090F, 0x9C00090F }));
         WallpaperStore.loadInto(getContext(), wallpaper, palette);
     }
 

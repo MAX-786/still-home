@@ -8,15 +8,20 @@ android {
 
     defaultConfig {
         applicationId = "dev.stillhome.tv"
-        minSdk = 23
+        minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.3.0"
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        // Fonts and symbols are read straight from the APK.
+        noCompress += listOf("ttf", "png")
     }
 
     buildTypes {

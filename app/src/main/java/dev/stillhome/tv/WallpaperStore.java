@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 
 /** Decodes one wallpaper and a tiny frosted copy off the UI thread. */
 final class WallpaperStore {
-    private static final ExecutorService DECODE = Executors.newSingleThreadExecutor();
+    private static final ExecutorService DECODE = Ui.worker("decode");
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final List<WeakReference<View>> GLASS_SURFACES = new ArrayList<>();
     private static final Map<String, List<WeakReference<ImageView>>> PENDING = new HashMap<>();
@@ -96,7 +96,7 @@ final class WallpaperStore {
 
         Context appContext = context.getApplicationContext();
         DECODE.execute(() -> {
-            if (!key.equals(imageKey(appContext, LauncherPrefs.palette(appContext)))) {
+            if (!key.equals(imageKey(appContext, Palette.current(appContext)))) {
                 MAIN.post(() -> finishLoad(appContext, key, null, null));
                 return;
             }
@@ -105,7 +105,7 @@ final class WallpaperStore {
                 decoded = decode(appContext, "res:" + palette.name());
             }
             Bitmap ready = decoded;
-            boolean current = key.equals(imageKey(appContext, LauncherPrefs.palette(appContext)));
+            boolean current = key.equals(imageKey(appContext, Palette.current(appContext)));
             Bitmap readyBlur = current && ready != null && !"res:NIGHT".equals(key)
                     ? makeTinyBlur(ready) : null;
             MAIN.post(() -> finishLoad(appContext, key, ready, readyBlur));
@@ -113,7 +113,7 @@ final class WallpaperStore {
     }
 
     private static void finishLoad(Context context, String key, Bitmap image, Bitmap blur) {
-        boolean current = key.equals(imageKey(context, LauncherPrefs.palette(context)));
+        boolean current = key.equals(imageKey(context, Palette.current(context)));
         List<WeakReference<ImageView>> waiting;
         synchronized (WallpaperStore.class) {
             waiting = PENDING.remove(key);
@@ -186,8 +186,8 @@ final class WallpaperStore {
     }
 
     private static String imageKey(Context context, Palette palette) {
-        String custom = LauncherPrefs.wallpaperUri(context);
-        return custom == null ? "res:" + palette.name() : custom;
+        String key = Prefs.wallpaper();
+        return key.startsWith("res:") || key.equals(Prefs.AURORA) ? "res:" + palette.name() : key;
     }
 
     @SuppressLint("ResourceType") // Drawable JPEGs are decoded as streams to bound memory use.
