@@ -11,7 +11,7 @@ import java.util.TimeZone;
  * they use (Jabalpur, 23 October 2026: Zawal 11:55, Zuhr end 13:48, Asr end 15:42, Maghrib 17:38, Nisf-ul-lail
  * 23:55 to 00:56):
  *
- *  Morning    Sehri end (75 minutes before sunrise), Sunrise
+ *  Morning    Sihori end (75 minutes before sunrise), Sunrise
  *  Afternoon  Zawal (the sun at its highest), then the time from Zawal to sunset in three equal parts: Zuhr ends at
  *             the first third, Asr at the second
  *  Evening    Maghrib (sunset), Nisf-ul-lail start (true midnight: halfway from sunset to the next sunrise, Zawal
@@ -53,7 +53,7 @@ final class Prayer {
         long afternoon = sunset - noon, night = nextSunrise - sunset;
         long midnightTrue = sunset + night / 2;
         List<Time> out = new ArrayList<>();
-        out.add(new Time("Sehri end", sunrise - 75 * MINUTE, MORNING));
+        out.add(new Time("Sihori end", sunrise - 75 * MINUTE, MORNING));
         out.add(new Time("Sunrise", sunrise, MORNING));
         out.add(new Time("Zawal", noon, AFTERNOON));
         out.add(new Time("Zuhr end", noon + afternoon / 3, AFTERNOON));
@@ -64,7 +64,7 @@ final class Prayer {
         return out;
     }
 
-    /** The first time still ahead today; past the last one, tomorrow's Sehri end. */
+    /** The first time still ahead today; past the last one, tomorrow's Sihori end. */
     static Time next(List<Time> day, long now) {
         for (Time t : day) if (t.at > now) return t;
         Time first = day.get(0);

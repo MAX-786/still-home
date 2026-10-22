@@ -140,7 +140,7 @@ public final class SettingsActivity extends Activity {
         });
 
         // Namaz times
-        heading(sections, "Namaz times", "Worked out from the sun at your city: Sehri end is 75 minutes before sunrise, Zawal is the sun's highest point, "
+        heading(sections, "Namaz times", "Worked out from the sun at your city: Sihori end is 75 minutes before sunrise, Zawal is the sun's highest point, "
                 + "the time from Zawal to sunset is split in three (Zuhr ends at the first third, Asr at the second), Maghrib is sunset, and Nisf-ul-lail "
                 + "starts at true midnight (Zawal plus twelve hours) and lasts one hour of the night (a twelfth of the night).");
         LinearLayout namazRow = TvUi.row(this);
